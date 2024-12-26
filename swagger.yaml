@@ -1,0 +1,164 @@
+openapi: 3.0.0
+info:
+  title: URL Shortener API
+  description: API documentation for authentication and URL shortening.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api
+    description: Development Server
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: URL
+    description: URL shortening and analytics endpoints
+paths:
+  /auth/google:
+    get:
+      summary: Initiates Google OAuth authentication
+      tags:
+        - Auth
+      responses:
+        "302":
+          description: Redirects to Google for authentication
+  /auth/google/callback:
+    get:
+      summary: Google OAuth callback
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: The JWT token for the authenticated user
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+                  user:
+                    type: object
+                    description: Authenticated user's details
+                    properties:
+                      id:
+                        type: string
+                        description: User's unique ID
+                        example: 12345
+                      email:
+                        type: string
+                        description: User's email address
+                        example: user@example.com
+  /shorten:
+    post:
+      summary: Shortens a given long URL
+      tags:
+        - URL
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                longUrl:
+                  type: string
+                  description: The original long URL to shorten
+                  example: https://example.com/very-long-url
+                customAlias:
+                  type: string
+                  description: Custom alias for the short URL (optional)
+                  example: my-custom-alias
+                topic:
+                  type: string
+                  description: Topic associated with the URL (optional)
+                  example: Tech
+              required:
+                - longUrl
+      responses:
+        "201":
+          description: Successfully shortened the URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shortUrl:
+                    type: string
+                    description: The generated short URL
+                    example: http://localhost:5000/api/my-custom-alias
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: The time the short URL was created
+                    example: 2024-12-26T10:37:57.123Z
+        "400":
+          description: Bad Request - Invalid or missing parameters
+  /{shortCode}:
+    get:
+      summary: Redirects to the original long URL
+      tags:
+        - URL
+      parameters:
+        - name: shortCode
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique code for the shortened URL
+          example: my-custom-alias
+      responses:
+        "302":
+          description: Redirects to the original URL
+        "404":
+          description: Not Found - Short URL does not exist
+  /analytics/{shortCode}:
+    get:
+      summary: Provides analytics for a short URL
+      tags:
+        - URL
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: shortCode
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique code for the shortened URL
+          example: my-custom-alias
+      responses:
+        "200":
+          description: Successfully retrieved analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalClicks:
+                    type: integer
+                    description: Total number of clicks for the short URL
+                    example: 42
+                  osType:
+                    type: object
+                    description: Distribution of clicks by operating system
+                    example:
+                      Windows: 20
+                      macOS: 10
+                      Linux: 12
+                  deviceType:
+                    type: object
+                    description: Distribution of clicks by device type
+                    example:
+                      desktop: 30
+                      mobile: 12
+        "404":
+          description: Not Found - Short URL does not exist
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
